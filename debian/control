@@ -1,0 +1,15 @@
+Source: littlebrother
+Section: gnome
+Priority: extra
+Maintainer: Tom Parker <tparker@lshift.net>
+Build-Depends: debhelper (>= 7.0.50~)
+Standards-Version: 3.8.4
+Vcs-Git: git://github.com/palfrey/LittleBrother.git
+Vcs-Browser: http://github.com/palfrey/LittleBrother
+
+Package: littlebrother
+Architecture: all
+Depends: ${python:Depends}, python-dbus, python-gtk2, xdg-utils
+Description: Little Brother script
+ A script to spy on yourself, recording screen captures every ten minutes
+ in order to ease writing timesheets

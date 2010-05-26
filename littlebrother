@@ -1,0 +1,81 @@
+#!/usr/bin/python
+
+import gtk, glib
+import gc
+import os,os.path, time
+import threading
+import dbus
+
+try:
+	bus = dbus.SessionBus()
+	manager_obj = bus.get_object('org.gnome.ScreenSaver', '/org/gnome/ScreenSaver')
+	manager = dbus.Interface(manager_obj, 'org.gnome.ScreenSaver')
+	test = manager.GetActive()
+	hasDbus = True
+except dbus.exceptions.DBusException,e:
+	print "Disabling Dbus screensaver interaction because of exception: ", e
+	hasDbus = False
+
+def takecap():
+	if hasDbus and bool(manager.GetActive()):
+		return True # skip because the screensaver is active
+
+	file = os.path.join(os.path.expanduser("~/.screencaps"), time.strftime("%F/%T.png"))
+	folder = os.path.dirname(file)
+	if not os.path.exists(folder):
+		os.makedirs(folder)
+
+	width = gtk.gdk.screen_width()
+	height = gtk.gdk.screen_height()
+	screenshot = gtk.gdk.Pixbuf.get_from_drawable(
+			  gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB, True, 8, width, height),
+			  gtk.gdk.get_default_root_window(),
+			  gtk.gdk.colormap_get_system(),
+			  0, 0, 0, 0, width, height)
+
+	screenshot.save(file, "png")
+
+	del screenshot
+	# PyGTK FAQ (http://faq.pygtk.org/index.py?req=show&file=faq23.036.htp) says garbage 
+	# collect as otherwise we get lots of junk over time
+	gc.collect()
+
+	return True
+
+long_path = "/usr/share/icons/littlebrother.svg"
+short_path = os.path.basename(long_path)
+if os.path.exists(long_path):
+	icon = gtk.status_icon_new_from_file(long_path)
+elif os.path.exists(short_path):
+	icon = gtk.status_icon_new_from_file(short_path)
+else:
+	raise Exception, "Can't find %"%short_path
+
+def menu_item(text, menu):
+	ret = gtk.MenuItem(text)
+	menu.append(ret)
+	ret.show()
+	return ret
+
+menu = gtk.Menu()
+open_item = menu_item("Open folder", menu)
+quit_item = menu_item("Quit", menu)
+
+def do_quit(menuitem):
+	gtk.main_quit()
+
+def do_open(menuitem):
+	os.system("xdg-open ~/.screencaps")
+
+def handle_popup(status_icon, button, activate_time):
+	menu.popup(None, None, None, button, activate_time)
+
+quit_item.connect_object("activate", do_quit, quit_item)
+open_item.connect_object("activate", do_open, open_item)
+
+icon.connect_object("popup-menu", handle_popup, icon)
+
+glib.timeout_add(10*60*1000, takecap)
+
+gtk.gdk.threads_init()
+gtk.main()
